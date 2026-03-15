@@ -4,6 +4,7 @@ import { GoogleAuthProvider } from 'firebase/auth'
 
 import YouTubeUploader from './components/YouTubeUploader'
 import UsageGuide from './components/UsageGuide'
+import BadmintonCourt from './components/BadmintonCourt'
 import { motion, AnimatePresence } from 'framer-motion'
 import { auth, googleProvider, db } from './firebase'
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
