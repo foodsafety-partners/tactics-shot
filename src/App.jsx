@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react'
 import { Trophy, Target, Layout, ChevronRight, Share2, Settings, Undo2, Trash2, CheckCircle2, Map as MapIcon, Layers, Save, History, BarChart3, XCircle, LogOut, Pencil, Video, Youtube, HelpCircle } from 'lucide-react'
 import { GoogleAuthProvider } from 'firebase/auth'
 
