@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Trophy, Target, Layout, ChevronRight, Share2, Settings, Undo2, Trash2, CheckCircle2, Map as MapIcon, Layers, Save, History, BarChart3, XCircle, LogOut, Pencil, Video, Youtube, HelpCircle } from 'lucide-react'
+import { Trophy, Target, Layout, ChevronRight, Share2, Settings, Undo2, Trash2, CheckCircle2, Map as MapIcon, Layers, Save, History, BarChart3, XCircle, LogOut, Pencil, Video, Youtube, HelpCircle, ExternalLink } from 'lucide-react'
 import { GoogleAuthProvider } from 'firebase/auth'
 
 import YouTubeUploader from './components/YouTubeUploader'
@@ -655,12 +655,12 @@ function App() {
                     </div>
                     {session.youtubeId ? (
                       <a 
-                        href={`https://youtu.be/${session.youtubeId}`} 
+                        href={session.youtubeId.startsWith('http') ? session.youtubeId : `https://youtu.be/${session.youtubeId}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 text-[10px] font-black text-rose-500 bg-rose-500/10 w-fit px-3 py-1.5 rounded-lg mt-2 transition-all hover:bg-rose-500/20"
                       >
-                        <Youtube size={14} />
+                        {session.youtubeId.includes('youtube') || session.youtubeId.includes('youtu.be') || !session.youtubeId.startsWith('http') ? <Youtube size={14} /> : <ExternalLink size={14} />}
                         <span>動画を再生</span>
                       </a>
                     ) : (
@@ -703,8 +703,14 @@ function App() {
                             <button 
                               onClick={async () => {
                                 const vidMatch = manualVideoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([^?&]+)/)
-                                if (vidMatch && vidMatch[1]) {
-                                  const vid = vidMatch[1]
+                                let vid = vidMatch ? vidMatch[1] : null
+                                
+                                // YouTube IDが見つからない場合、もしhttpで始まっていればURLそのものを保存
+                                if (!vid && manualVideoUrl.startsWith('http')) {
+                                  vid = manualVideoUrl
+                                }
+
+                                if (vid) {
                                   if (user && !user.guest) {
                                     const sessionRef = doc(db, `users/${user.uid}/sessions`, session.id)
                                     await updateDoc(sessionRef, { youtubeId: vid })
@@ -716,7 +722,7 @@ function App() {
                                   setActiveUploadSessionId(null)
                                   setManualVideoUrl('')
                                 } else {
-                                  alert('正しいYouTubeのURLを入力してください')
+                                  alert('正しいURLを入力してください（YouTubeまたはGoogleドライブの共有リンクなど）')
                                 }
                               }}
                               className="bg-indigo-500 text-white p-3 rounded-xl hover:bg-indigo-400"
