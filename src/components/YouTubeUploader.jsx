@@ -74,7 +74,14 @@ const YouTubeUploader = ({ accessToken, metadata, onUploadComplete }) => {
         body: JSON.stringify(videoMetadata)
       });
 
-      if (!response.ok) throw new Error('Failed to start upload session');
+      if (!response.ok) {
+        const errorData = await response.json();
+        const errorMessage = errorData.error?.message || 'Failed to start upload session';
+        if (errorMessage.includes('channelNotFound')) {
+          throw new Error('YouTubeチャンネルが見つかりません。YouTubeでチャンネルを作成してください。');
+        }
+        throw new Error(errorMessage);
+      }
 
       const uploadUrl = response.headers.get('Location');
 
@@ -97,12 +104,19 @@ const YouTubeUploader = ({ accessToken, metadata, onUploadComplete }) => {
           setUploading(false);
           onUploadComplete(result.id);
         } else {
-          throw new Error('Upload failed');
+          let msg = 'Upload failed';
+          try {
+            const err = JSON.parse(xhr.responseText);
+            msg = err.error?.message || msg;
+          } catch(e) {}
+          setError(msg);
+          setUploading(false);
         }
       };
 
       xhr.onerror = () => {
-        throw new Error('Network error during upload');
+        setError('Network error during upload');
+        setUploading(false);
       };
 
       xhr.send(file);

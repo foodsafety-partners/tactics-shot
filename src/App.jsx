@@ -71,6 +71,9 @@ function App() {
   const [lastShotOrigin, setLastShotOrigin] = useState('self')
   const [activeUploadSessionId, setActiveUploadSessionId] = useState(null)
   const [showHelpModal, setShowHelpModal] = useState(false)
+  const [logSortOrder, setLogSortOrder] = useState('desc') // 'desc' or 'asc'
+  const [isManualVideoInput, setIsManualVideoInput] = useState(false)
+  const [manualVideoUrl, setManualVideoUrl] = useState('')
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -89,14 +92,14 @@ function App() {
     }
     const q = query(
       collection(db, `users/${user.uid}/sessions`),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', logSortOrder)
     )
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       setSessions(docs)
     })
     return () => unsubscribe()
-  }, [user])
+  }, [user, logSortOrder])
 
   const handleLogin = async () => {
     try {
@@ -585,12 +588,26 @@ function App() {
                 </span>
                 <button onClick={() => setShowHelpModal(true)} className="p-1 text-slate-600 hover:text-indigo-400 transition-colors"><HelpCircle size={14} /></button>
               </div>
+               <div className="flex items-center gap-1.5 bg-slate-800/60 p-1 rounded-xl">
+                <button 
+                  onClick={() => setLogSortOrder('desc')}
+                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black transition-all ${logSortOrder === 'desc' ? 'bg-indigo-500 text-white' : 'text-slate-500'}`}
+                >
+                  新しい順
+                </button>
+                <button 
+                  onClick={() => setLogSortOrder('asc')}
+                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black transition-all ${logSortOrder === 'asc' ? 'bg-indigo-500 text-white' : 'text-slate-500'}`}
+                >
+                  古い順
+                </button>
+              </div>
               <button 
                 onClick={() => viewReportForSessions(Array.from(selectedSessionIds))}
                 disabled={selectedSessionIds.size === 0}
                 className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all ${selectedSessionIds.size > 0 ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-500 opacity-50'}`}
               >
-                選択したログのレポートへ
+                レポート
               </button>
             </div>
             {sessions.map(session => {
@@ -657,37 +674,97 @@ function App() {
                     )}
                   </div>
                   {activeUploadSessionId === session.id && (
-                    <div className="mt-4 pt-4 border-t border-slate-800/60">
-                      {!accessToken ? (
+                    <div className="mt-4 pt-4 border-t border-slate-800/60 space-y-3">
+                      <div className="flex gap-2 p-1 bg-slate-950/40 rounded-xl border border-slate-800/20">
                         <button 
-                          onClick={handleLogin}
-                          className="w-full bg-rose-600/20 text-rose-400 py-3 rounded-xl font-black text-[10px] flex items-center justify-center gap-2 border border-rose-500/30"
+                          onClick={() => setIsManualVideoInput(false)}
+                          className={`flex-1 py-1.5 rounded-lg text-[9px] font-black transition-all ${!isManualVideoInput ? 'bg-indigo-500 text-white' : 'text-slate-500'}`}
                         >
-                          <Youtube size={16} />
-                          YouTubeに連携してアップロード
+                          YouTubeへ直接投稿
                         </button>
+                        <button 
+                          onClick={() => setIsManualVideoInput(true)}
+                          className={`flex-1 py-1.5 rounded-lg text-[9px] font-black transition-all ${isManualVideoInput ? 'bg-indigo-500 text-white' : 'text-slate-500'}`}
+                        >
+                          URLを手動入力
+                        </button>
+                      </div>
+
+                      {isManualVideoInput ? (
+                        <div className="space-y-3 p-3 bg-slate-800/20 rounded-xl">
+                          <div className="flex items-center gap-1.5">
+                            <input 
+                              type="text" 
+                              placeholder="YouTube URLを貼り付け" 
+                              className="flex-1 bg-slate-950 px-4 py-3 rounded-xl text-[10px] font-bold outline-none border border-slate-700 focus:border-indigo-500"
+                              value={manualVideoUrl}
+                              onChange={(e) => setManualVideoUrl(e.target.value)}
+                            />
+                            <button 
+                              onClick={async () => {
+                                const vidMatch = manualVideoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([^?&]+)/)
+                                if (vidMatch && vidMatch[1]) {
+                                  const vid = vidMatch[1]
+                                  if (user && !user.guest) {
+                                    const sessionRef = doc(db, `users/${user.uid}/sessions`, session.id)
+                                    await updateDoc(sessionRef, { youtubeId: vid })
+                                  } else {
+                                    const updated = sessions.map(s => s.id === session.id ? { ...s, youtubeId: vid } : s)
+                                    setSessions(updated)
+                                    localStorage.setItem('tactics_sessions', JSON.stringify(updated))
+                                  }
+                                  setActiveUploadSessionId(null)
+                                  setManualVideoUrl('')
+                                } else {
+                                  alert('正しいYouTubeのURLを入力してください')
+                                }
+                              }}
+                              className="bg-indigo-500 text-white p-3 rounded-xl hover:bg-indigo-400"
+                            >
+                              <CheckCircle2 size={16} />
+                            </button>
+                          </div>
+                          <p className="text-[9px] text-slate-500 italic px-1">URLを貼るだけならGoogleの警告は出ません。</p>
+                        </div>
                       ) : (
-                        <YouTubeUploader 
-                          accessToken={accessToken}
-                          metadata={{
-                            date: session.date?.split(' ')[0] || '',
-                            tournament: session.tournament || '',
-                            myName: session.myName || '',
-                            opponentTeam: session.opponentTeam || '',
-                            opponentName: session.opponentName || ''
-                          }}
-                          onUploadComplete={async (vid) => {
-                            if (user && !user.guest) {
-                              const sessionRef = doc(db, `users/${user.uid}/sessions`, session.id)
-                              await updateDoc(sessionRef, { youtubeId: vid })
-                            } else {
-                              const updated = sessions.map(s => s.id === session.id ? { ...s, youtubeId: vid } : s)
-                              setSessions(updated)
-                              localStorage.setItem('tactics_sessions', JSON.stringify(updated))
-                            }
-                            setActiveUploadSessionId(null);
-                          }}
-                        />
+                        <>
+                          {!accessToken ? (
+                            <div className="space-y-3">
+                              <button onClick={handleLogin} className="w-full bg-rose-600/20 text-rose-400 py-3 rounded-xl font-black text-[10px] flex items-center justify-center gap-2 border border-rose-500/30">
+                                <Youtube size={16} />
+                                YouTubeに連携してアップロード
+                              </button>
+                              <div className="p-3 bg-amber-500/5 rounded-xl border border-amber-500/10">
+                                <p className="text-[9px] text-amber-500/80 leading-relaxed italic">
+                                  <span className="font-black">※Googleの警告画面について:</span><br />
+                                  [詳細]→[tactics-shot(安全ではない)に移動] を選んで進めます。
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <YouTubeUploader 
+                              accessToken={accessToken}
+                              metadata={{
+                                date: session.date?.split(' ')[0] || '',
+                                tournament: session.tournament || '',
+                                myName: session.myName || '',
+                                opponentTeam: session.opponentTeam || '',
+                                opponentName: session.opponentName || ''
+                              }}
+                              onUploadComplete={async (vid) => {
+                                if (user && !user.guest) {
+                                  const sessionRef = doc(db, `users/${user.uid}/sessions`, session.id)
+                                  await updateDoc(sessionRef, { youtubeId: vid })
+                                } else {
+                                  const updated = sessions.map(s => s.id === session.id ? { ...s, youtubeId: vid } : s)
+                                  setSessions(updated)
+                                  localStorage.setItem('tactics_sessions', JSON.stringify(updated))
+                                }
+                                setActiveUploadSessionId(null);
+                              }}
+                            />
+                          )}
+                        </>
                       )}
                     </div>
                   )}
