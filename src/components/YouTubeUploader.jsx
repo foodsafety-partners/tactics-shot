@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Youtube, Upload, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Youtube, Upload, CheckCircle2, XCircle, Loader2, Video } from 'lucide-react';
 
 const YouTubeUploader = ({ accessToken, metadata, onUploadComplete }) => {
   const [file, setFile] = useState(null);
@@ -7,6 +7,7 @@ const YouTubeUploader = ({ accessToken, metadata, onUploadComplete }) => {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
   const [videoId, setVideoId] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -14,6 +15,27 @@ const YouTubeUploader = ({ accessToken, metadata, onUploadComplete }) => {
     if (selectedFile) {
       setFile(selectedFile);
       setError(null);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const selectedFile = e.dataTransfer.files[0];
+    if (selectedFile && selectedFile.type.startsWith('video/')) {
+      setFile(selectedFile);
+      setError(null);
+    } else if (selectedFile) {
+      setError('動画ファイルを選択してください');
     }
   };
 
@@ -108,7 +130,10 @@ const YouTubeUploader = ({ accessToken, metadata, onUploadComplete }) => {
         <div className="space-y-3">
           <div 
             onClick={() => !uploading && fileInputRef.current.click()}
-            className={`cursor-pointer border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all ${file ? 'border-indigo-500/50 bg-indigo-500/5' : 'border-slate-800 bg-slate-800/20 hover:border-slate-700'}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`cursor-pointer border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all ${isDragging ? 'border-indigo-500 bg-indigo-500/20 scale-[1.02]' : file ? 'border-indigo-500/50 bg-indigo-500/5' : 'border-slate-800 bg-slate-800/20 hover:border-slate-700'}`}
           >
             <input 
               type="file" 
