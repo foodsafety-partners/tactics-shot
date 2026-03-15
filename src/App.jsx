@@ -1,6 +1,6 @@
 import { Trophy, Target, Layout, ChevronRight, Share2, Settings, Undo2, Trash2, CheckCircle2, Map as MapIcon, Layers, Save, History, BarChart3, XCircle, LogOut, Pencil, Video, Youtube, HelpCircle } from 'lucide-react'
 import { GoogleAuthProvider } from 'firebase/auth'
-import { TROPHY_COLORS, SHOT_TYPES_CONST } from './constants'
+
 import YouTubeUploader from './components/YouTubeUploader'
 import UsageGuide from './components/UsageGuide'
 import { motion, AnimatePresence } from 'framer-motion'
